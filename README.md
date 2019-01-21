@@ -19,10 +19,11 @@
 - Free software: MIT license
 - Documentation: http://atm.readthedocs.io/en/latest/
 
-
 ATM is an open source software library under the
 [*Human Data Interaction* project](https://hdi-dai.lids.mit.edu/)
-(HDI) at MIT. It is a distributed, scalable AutoML system designed with ease of use in mind.
+(HDI) at MIT by the [Data To AI Lab](https://dai.lids.mit.edu). It is a distributed, scalable AutoML system designed with ease of use in mind.
+
+DAI Lab is no longer actively developing ATM. Interested in developing and maintaining it? [Contact us.](mailto:dai-lab-atm@mit.edu&subject=Interest%20in%20developing%20ATM).
 
 ## Summary
 
@@ -52,11 +53,6 @@ selection, available in the accompanying library [btb](https://github.com/hdi-pr
 classifier it has trained.
 
 \**work in progress! See issue [#40](https://github.com/HDI-Project/ATM/issues/40)*
-
-## Current status
-
-ATM and the accompanying library BTB are under active development.
-We have made the transition and improvements.
 
 ## Setup/Installation
 
