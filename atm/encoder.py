@@ -66,10 +66,10 @@ class DataEncoder(object):
 
         # encode categorical columns, leave ordinal values alone
         for column in features.columns:
-            if features[column].dtype == 'object':
-                # save the indices of categorical columns for one-hot encoding
-                cat_cols.append(features.columns.get_loc(column))
+            # save the indices of categorical columns for one-hot encoding
+            cat_cols.append(features.columns.get_loc(column))
 
+            if features[column].dtype == 'object':
                 # encode each feature as an integer in range(unique_vals)
                 le = LabelEncoder()
                 features[column] = le.fit_transform(features[column])

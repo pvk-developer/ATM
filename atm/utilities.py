@@ -116,12 +116,12 @@ def vector_to_params(vector, tunables, categoricals, constants):
     # add the tunables
     for i, elt in enumerate(vector):
         key, struct = tunables[i]
-        if struct.type in [ParamTypes.INT, ParamTypes.INT_EXP]:
-            params[key] = int(elt)
-        elif struct.type in [ParamTypes.FLOAT, ParamTypes.FLOAT_EXP]:
-            params[key] = float(elt)
+        if struct.param_type in [ParamTypes.INT, ParamTypes.INT_EXP]:
+            params[key] = int(vector[key])
+        elif struct.param_type in [ParamTypes.FLOAT, ParamTypes.FLOAT_EXP]:
+            params[key] = float(vector[key])
         else:
-            raise ValueError('Unknown data type: {}'.format(struct.type))
+            raise ValueError('Unknown data type: {}'.format(struct.param_typ.param_type))
 
     # add the fixed categorical settings and fixed constant values
     for key, value in categoricals + constants:
@@ -149,6 +149,25 @@ def make_selector(selector_class, **kwargs):
         if k in init_args
     }
     return selector_class(**relevant_kwargs)
+
+
+def make_tuner(tuner_class, **kwargs):
+    """Instantiate a tuner of the given class with the kwargs that this class accepts.
+
+    Args:
+        tuner_class (type): BTB Tuner class to instantiate
+        **kwargs: keyword arguments that we try to pass
+
+    Returns:
+        Tuner: instance of the tuner_class
+    """
+
+    init_args = getargs(tuner_class.__init__)
+    relevant_kwargs = {
+        k: kwargs[k] for k in kwargs if k in init_args
+    }
+
+    return tuner_class(**relevant_kwargs)
 
 
 def params_to_vectors(params, tunables):

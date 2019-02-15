@@ -23,8 +23,8 @@ from atm.constants import CUSTOM_CLASS_REGEX, SELECTORS_MAP, TUNERS_MAP
 from atm.database import ClassifierStatus, db_session
 from atm.model import Model
 from atm.utilities import (download_data, ensure_directory, get_public_ip,
-                           make_selector, params_to_vectors, save_metrics,
-                           save_model, vector_to_params)
+                           make_selector, make_tuner, params_to_vectors,
+                           save_metrics, save_model, vector_to_params)
 
 # shhh
 warnings.filterwarnings('ignore')
@@ -184,9 +184,13 @@ class Worker(object):
         # Initialize the tuner and propose a new set of parameters
         # this has to be initialized with information from the hyperpartition, so we
         # need to do it fresh for each classifier (not in load_tuner)
-        tuner = self.Tuner(tunables=tunables,
-                           gridding=self.datarun.gridding,
-                           r_minimum=self.datarun.r_minimum)
+        tuner_kwargs = {
+            'tunables': tunables,
+            'gridding': self.datarun.gridding,
+            'r_minimum': self.datarun.r_minimum
+        }
+
+        tuner = make_tuner(self.Tuner, **tuner_kwargs)
         tuner.fit(X, y)
         vector = tuner.propose()
 
