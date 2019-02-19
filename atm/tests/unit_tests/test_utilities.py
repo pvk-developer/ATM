@@ -8,7 +8,7 @@ from atm import utilities
 from atm.constants import SELECTORS_MAP
 
 
-def test_make_selector():
+def test_get_instance():
     kwargs = {
         'choices': [1, 2, 3],
         'k': 3,
@@ -16,9 +16,8 @@ def test_make_selector():
     }
 
     for Selector in SELECTORS_MAP.values():
-        selector = utilities.make_selector(Selector, **kwargs)
+        selector = utilities.get_instance(Selector, **kwargs)
         assert isinstance(selector, btb.selection.selector.Selector)
-
 
 
 @patch('atm.utilities.requests')

@@ -23,8 +23,8 @@ from atm.constants import CUSTOM_CLASS_REGEX, SELECTORS_MAP, TUNERS_MAP
 from atm.database import ClassifierStatus, db_session
 from atm.model import Model
 from atm.utilities import (download_data, ensure_directory, get_public_ip,
-                           make_selector, make_tuner, params_to_vectors,
-                           save_metrics, save_model, vector_to_params)
+                           get_instance, params_to_vectors, save_metrics,
+                           save_model, vector_to_params)
 
 # shhh
 warnings.filterwarnings('ignore')
@@ -100,10 +100,10 @@ class Worker(object):
         hyperpartition_ids = [hp.id for hp in hyperpartitions]
 
         # Selector classes support passing in redundant arguments
-        self.selector = make_selector(Selector,
-                                      choices=hyperpartition_ids,
-                                      k=self.datarun.k_window,
-                                      by_algorithm=dict(hp_by_method))
+        self.selector = get_instance(Selector,
+                                     choices=hyperpartition_ids,
+                                     k=self.datarun.k_window,
+                                     by_algorithm=dict(hp_by_method))
 
     def load_tuner(self):
         """
@@ -190,7 +190,7 @@ class Worker(object):
             'r_minimum': self.datarun.r_minimum
         }
 
-        tuner = make_tuner(self.Tuner, **tuner_kwargs)
+        tuner = get_instance(self.Tuner, **tuner_kwargs)
         tuner.fit(X, y)
         vector = tuner.propose()
 

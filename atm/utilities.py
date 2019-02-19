@@ -130,44 +130,25 @@ def vector_to_params(vector, tunables, categoricals, constants):
     return params
 
 
-def make_selector(selector_class, **kwargs):
+def get_instance(class_, **kwargs):
     """Instantiate a selector of the given class with unused kwargs
 
     BTB Selectors accept different kwargs. ATM allows all kwargs to be configured, but some will not be accepted by different Selector classes. This wrapper inspects the __init__ signature to pass the selector the relevant kwargs.
 
     Args:
-        selector_class (type): selector class to instantiate
+        class_ (type): class to instantiate
         **kwargs: keyword arguments to specific selector class
 
     Returns:
         Selector: instate of specific selector
     """
-    init_args = getargs(selector_class.__init__)
+    init_args = getargs(class_.__init__)
     relevant_kwargs = {
         k: kwargs[k]
         for k in kwargs
         if k in init_args
     }
-    return selector_class(**relevant_kwargs)
-
-
-def make_tuner(tuner_class, **kwargs):
-    """Instantiate a tuner of the given class with the kwargs that this class accepts.
-
-    Args:
-        tuner_class (type): BTB Tuner class to instantiate
-        **kwargs: keyword arguments that we try to pass
-
-    Returns:
-        Tuner: instance of the tuner_class
-    """
-
-    init_args = getargs(tuner_class.__init__)
-    relevant_kwargs = {
-        k: kwargs[k] for k in kwargs if k in init_args
-    }
-
-    return tuner_class(**relevant_kwargs)
+    return class_(**relevant_kwargs)
 
 
 def params_to_vectors(params, tunables):
