@@ -4,18 +4,25 @@ from flask import Flask, redirect
 from flask_restless_swagger import SwagAPIManager as APIManager
 from flask_sqlalchemy import SQLAlchemy
 
+from atm.models import ATM
+
 
 def make_absolute(url):
-    if str(url).startswith('sqlite:///'):
-        url = 'sqlite:///' + os.path.abspath(url.database)
+    url = 'sqlite:///' + os.path.abspath(url)
 
     return url
 
 
-def create_app(atm):
+def create_app():
+
+    atm = ATM()  # we use this one in order to get the database classes
+
+    with open('db_url.cfg', 'r') as f:
+        db_url = f.read()
+
     app = Flask(__name__)
     app.config['DEBUG'] = True
-    app.config['SQLALCHEMY_DATABASE_URI'] = make_absolute(atm.db.engine.url)
+    app.config['SQLALCHEMY_DATABASE_URI'] = make_absolute(db_url)
     db = SQLAlchemy(app)
 
     # Create the Flask-Restless API manager.

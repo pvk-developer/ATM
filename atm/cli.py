@@ -4,15 +4,14 @@ import argparse
 import glob
 import os
 import shutil
+import subprocess
+
+import psutil
 
 from atm.api import create_app
 from atm.config import (
     add_arguments_aws_s3, add_arguments_datarun, add_arguments_logging, add_arguments_sql)
 from atm.models import ATM
-
-
-def _end_to_end_test(args):
-    """End to end test"""
 
 
 def _work(args):
@@ -23,14 +22,75 @@ def _work(args):
         save_files=args.save_files,
         cloud_mode=args.cloud_mode,
         total_time=args.time,
-        wait=False
+        wait=True
     )
 
 
-def _serve(args):
-    atm = ATM(**vars(args))
-    app = create_app(atm)
-    app.run(host=args.host, port=args.port)
+def _check_server_status(args, kill=False):
+
+    try:
+        with open('atm_gunicorn.pid', 'r') as f:
+            pid = int(f.read())
+
+        process = psutil.Process(pid)
+
+        command = process.as_dict().get('cmdline')
+
+        if kill:
+            process.kill()
+            print('ATM server stopped.')
+
+        if ('atm-gunicorn' in command) and not kill:
+            print('ATM server is running at http://{}'.format(command[-1]))
+
+            return True
+
+    except (FileNotFoundError, psutil.NoSuchProcess) as e:
+
+        if kill:
+            print('ATM server not running.')
+
+        return False
+
+
+def _server_start(args):
+    """Start server."""
+
+    if not _check_server_status(args):
+        host_port = '{}:{}'.format(args.host or '127.0.0.1', args.port or '8000')
+        atm = ATM(**vars(args))
+
+        with open('db_url.cfg', 'w') as f:
+            f.write(atm.db.engine.url.database)
+
+        gunicorn_process = [
+            'gunicorn',
+            '--name',
+            'atm-gunicorn',
+            '--pid',
+            'atm_gunicorn.pid',
+            '--log-file',
+            'atm_gunicorn.log',
+            'atm.api:create_app',
+            '--bind',
+            host_port
+        ]
+
+        process = psutil.Popen(gunicorn_process)
+
+        print('ATM server started at http://{}'.format(host_port))
+
+
+def _server_stop(args):
+    """Stop server."""
+    _check_server_status(args, kill=True)
+
+
+def _server_status(args):
+    """Check server status."""
+    if not _check_server_status(args):
+        print('ATM server not running')
+
 
 
 def _enter_data(args):
@@ -92,22 +152,30 @@ def _get_parser():
 
     # Server
     server = subparsers.add_parser('server', parents=[parent])
-    server.set_defaults(action=_serve)
-    server.add_argument('--host', help='IP to listen at')
-    server.add_argument('--port', help='Port to listen at', type=int)
+    add_arguments_sql(server)  # add sql
+    server.add_argument('--debug-mode',
+                        help='Start the server in debug mode.', action='store_true')
+
+    server_subparsers = server.add_subparsers(
+    )
+
+    server_subparsers.required = True
+
+    server_start = server_subparsers.add_parser('start')
+    server_start.set_defaults(action=_server_start)
+    server_start.add_argument('--host', help='IP to listen at')
+    server_start.add_argument('--port', help='Port to listen at', type=int)
+
+    server_status = server_subparsers.add_parser('status')
+    server_status.set_defaults(action=_server_status)
+
+    server_stop = server_subparsers.add_parser('stop')
+    server_stop.set_defaults(action=_server_stop)
+
 
     # Make Config
     make_config = subparsers.add_parser('make_config', parents=[parent])
     make_config.set_defaults(action=_make_config)
-
-    # End to end test
-    end_to_end = subparsers.add_parser('end_to_end', parents=[parent])
-    end_to_end.set_defaults(action=_end_to_end_test)
-    end_to_end.add_argument('--processes', help='number of processes to run concurrently',
-                            type=int, default=4)
-
-    end_to_end.add_argument('--total-time', help='Total time for each worker to work in seconds.',
-                            type=int, default=None)
 
     return parser
 

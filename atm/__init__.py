@@ -15,8 +15,8 @@ __email__ = 'dailabmit@gmail.com'
 __version__ = '0.1.2-dev'
 
 # this defines which modules will be imported by "from atm import *"
-__all__ = ['config', 'classifier', 'constants', 'database', 'enter_data',
-           'method', 'metrics', 'models', 'utilities', 'worker']
+__all__ = ['api', 'config', 'classifier', 'constants', 'database', 'enter_data',
+           'method', 'metrics', 'models', 'utilities', 'worker', 'wsgi']
 
 # by default, nothing should be logged
 logger = logging.getLogger('atm')
