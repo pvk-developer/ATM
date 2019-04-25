@@ -4,25 +4,64 @@ import argparse
 import glob
 import os
 import shutil
+import multiprocessing
 import subprocess
+
+import daemon
+import daemon.pidfile
 
 import psutil
 
+from atm import PROJECT_ROOT
 from atm.api import create_app
 from atm.config import (
     add_arguments_aws_s3, add_arguments_datarun, add_arguments_logging, add_arguments_sql)
 from atm.models import ATM
 
 
+def _worker_start(args):
+    """Start n workers to a work for a given database configuration."""
+    atm = ATM(**vars(args))
+
+    workers_folder = os.path.join(PROJECT_ROOT, 'workers_pid')
+
+    for n in range(args.number):
+        pidfile = daemon.pidfile.PIDLockFile(os.path.join(workers_folder, 'worker_%s.pid' % n))
+        context = daemon.DaemonContext(
+            pidfile=pidfile,
+            working_directory=PROJECT_ROOT
+        )
+
+        process = multiprocessing.Process(target=_single_worker_start, args=[context, atm])
+        process.start()
+        print('Starting {}'.format(n))
+
+
+def _single_worker_start(context, atm):
+    """Starts a single worker process to be used by multiprocessing."""
+    print(context.pidfile)
+    with context:
+        atm.work()
+
+def _worker_stop(args):
+    """Stop n or all workers."""
+
+
+def _worker_status(args):
+    """Display information about how many ATM workers are runing."""
+    workers_folder = os.path.join(project_root, 'workers_pid')
+
+
 def _work(args):
     atm = ATM(**vars(args))
+
     atm.work(
         datarun_ids=args.dataruns,
         choose_randomly=args.choose_randomly,
         save_files=args.save_files,
         cloud_mode=args.cloud_mode,
         total_time=args.time,
-        wait=True
+        wait=args.wait
     )
 
 
@@ -76,7 +115,7 @@ def _server_start(args):
             host_port
         ]
 
-        process = psutil.Popen(gunicorn_process)
+        psutil.Popen(gunicorn_process)
 
         print('ATM server started at http://{}'.format(host_port))
 
@@ -89,7 +128,7 @@ def _server_stop(args):
 def _server_status(args):
     """Check server status."""
     if not _check_server_status(args):
-        print('ATM server not running')
+        print('ATM server not running.')
 
 
 
@@ -111,7 +150,7 @@ def _make_config(args):
         shutil.copy(template, target_file)
 
 
-# load other functions from config.py
+# load other arguments from config.py
 def _add_common_arguments(parser):
     add_arguments_sql(parser)
     add_arguments_aws_s3(parser)
@@ -136,19 +175,48 @@ def _get_parser():
 
     # Worker
     worker = subparsers.add_parser('worker', parents=[parent])
-    worker.set_defaults(action=_work)
-    _add_common_arguments(worker)
-    worker.add_argument('--cloud-mode', action='store_true', default=False,
-                        help='Whether to run this worker in cloud mode')
+    worker_subparser = worker.add_subparsers(
+        title='Workers',
+        dest='Control the ATM workers.',
+        help='Start, stop or check the status of the workers.'
+    )
 
-    worker.add_argument('--dataruns', help='Only train on dataruns with these ids', nargs='+')
-    worker.add_argument('--time', help='Number of seconds to run worker', type=int)
-    worker.add_argument('--choose-randomly', action='store_true',
-                        help='Choose dataruns to work on randomly (default = sequential order)')
+    worker_subparser.required = True
+    worker_start = worker_subparser.add_parser('start')
+    _add_common_arguments(worker_start)
 
-    worker.add_argument('--no-save', dest='save_files', default=True,
-                        action='store_const', const=False,
-                        help="don't save models and metrics at all")
+    worker_start.set_defaults(action=_worker_start)
+
+    worker_start.add_argument('--cloud-mode', action='store_true',
+                              help='Whether to run this worker in cloud mode.')
+
+    worker_start.add_argument('--choose-randomly', action='store_true',
+                              help='Choose dataruns to work on randomly, default is sequential')
+
+    worker_start.add_argument('--no-save', dest='save_files',
+                              action='store_const', const=False,
+                              help="don't save models and metrics at all")
+
+    worker_start.add_argument('--number', '-n',
+                              type=int,
+                              default=1,
+                              help='Number of workers to launch.')
+
+    worker_stop = worker_subparser.add_parser('stop')
+    _add_common_arguments(worker_stop)
+
+    worker_stop.set_defaults(action=_worker_stop)
+    worker_stop.add_argument('--all', action='store_true',
+                             help='If we would like to stop all the workers that are runing.')
+
+    worker_stop.add_argument('--number', '-n',
+                              type=int,
+                              default=1,
+                              help='Number of workers to stop.')
+
+    worker_status = worker_subparser.add_parser('status')
+    _add_common_arguments(worker_status)
+    worker_status.set_defaults(action=_worker_status)
 
     # Server
     server = subparsers.add_parser('server', parents=[parent])
@@ -157,6 +225,9 @@ def _get_parser():
                         help='Start the server in debug mode.', action='store_true')
 
     server_subparsers = server.add_subparsers(
+        title='ATM API server',
+        dest='Control the ATM API server.',
+        help='Start, stop or check the status of the API server.'
     )
 
     server_subparsers.required = True
